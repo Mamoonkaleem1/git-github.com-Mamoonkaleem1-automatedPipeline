@@ -1,7 +1,9 @@
 import {
   ConflictException,
+  HttpException,
   Injectable,
   InternalServerErrorException,
+  NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -75,5 +77,28 @@ export class UsersService {
         email: true,
       },
     });
+  }
+
+  async deleteById(id: number) {
+    try {
+      await this.prisma.user.delete({
+        where: {
+          id,
+        },
+      });
+
+      return {
+        success: true,
+        message: 'User deleted successfully.',
+      };
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2025') {
+          throw new NotFoundException('User not found.');
+        }
+      }
+
+      throw new InternalServerErrorException('Failed to delete user.');
+    }
   }
 }
