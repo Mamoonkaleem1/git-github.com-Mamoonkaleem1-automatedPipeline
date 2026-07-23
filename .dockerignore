@@ -1,11 +1,43 @@
+# Node
 node_modules
-dist
+npm-debug.log
+
+# Git
 .git
+.gitignore
 .github
+
+# Environment
 .env
 .env.*
+
+!.env.example
+
+# Build output
+dist
 coverage
+
+# IDE
 .vscode
-Dockerfile
-docker-compose.yml
+.idea
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs
+*.log
+
+# Tests
+test
+tests
+
+# Documentation
 README.md
+
+# Docker
+docker-compose.yml
+
+# Misc
+*.md
