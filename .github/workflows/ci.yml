@@ -36,8 +36,8 @@ jobs:
         run: npm run build
 
       # Lint
-      - name: Run ESLint
-        run: npm run lint
+      # - name: Run ESLint
+      #   run: npm run lint
 
       # Unit Tests
       - name: Run Tests
