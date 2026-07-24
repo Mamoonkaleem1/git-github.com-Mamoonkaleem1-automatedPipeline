@@ -7,6 +7,7 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { Prisma } from '@prisma/client';
+import { TaskPaginationDto } from './dto/task-pagination.dto';
 
 @Injectable()
 export class TasksService {
@@ -73,46 +74,73 @@ export class TasksService {
     }
   }
 
-  async findAll() {
+  async findAll(paginationDto: TaskPaginationDto) {
     try {
-      const tasks = await this.prisma.task.findMany({
-        select: {
-          id: true,
-          title: true,
-          description: true,
-          status: true,
-          priority: true,
-          dueDate: true,
-          createdAt: true,
+      const { page, limit, search } = paginationDto;
 
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
+      const skip = (page - 1) * limit;
+
+      const where: Prisma.TaskWhereInput = {};
+
+      if (search) {
+        where.OR = [
+          {
+            title: {
+              contains: search,
+              mode: 'insensitive',
             },
           },
-        },
+          {
+            description: {
+              contains: search,
+              mode: 'insensitive',
+            },
+          },
+        ];
+      }
 
-        orderBy: {
-          createdAt: 'desc',
-        },
-      });
+      const [tasks, totalItems] = await this.prisma.$transaction([
+        this.prisma.task.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: {
+            createdAt: 'desc',
+          },
+          include: {
+            user: {
+              select: {
+                name: true,
+                email: true,
+              },
+            },
+          },
+        }),
+
+        this.prisma.task.count({
+          where,
+        }),
+      ]);
 
       return {
         success: true,
-        message: tasks.length
-          ? 'Tasks fetched successfully.'
-          : 'No tasks found.',
+        message: 'Tasks fetched successfully.',
         data: tasks,
+        meta: {
+          page,
+          limit,
+          totalItems,
+          totalPages: Math.ceil(totalItems / limit),
+          hasNextPage: page * limit < totalItems,
+          hasPreviousPage: page > 1,
+        },
       };
     } catch (error) {
-      console.error(error);
+      console.log(error);
 
       throw new InternalServerErrorException('Failed to fetch tasks.');
     }
   }
-
   async findOne(id: number) {
     try {
       const task = await this.prisma.task.findUnique({
@@ -236,6 +264,56 @@ export class TasksService {
       }
 
       throw new InternalServerErrorException('Failed to delete task.');
+    }
+  }
+
+  async statistics() {
+    try {
+      const [
+        totalTasks,
+        completedTasks,
+        inProgressTasks,
+        todoTasks,
+        highPriorityTasks,
+      ] = await this.prisma.$transaction([
+        this.prisma.task.count(),
+        this.prisma.task.count({
+          where: {
+            status: 'DONE',
+          },
+        }),
+        this.prisma.task.count({
+          where: {
+            status: 'IN_PROGRESS',
+          },
+        }),
+        this.prisma.task.count({
+          where: {
+            status: 'TODO',
+          },
+        }),
+        this.prisma.task.count({
+          where: {
+            priority: 'HIGH',
+          },
+        }),
+      ]);
+
+      return {
+        success: true,
+        message: 'Statics fetched successfully.',
+        totalTasks,
+        completedTasks,
+        inProgressTasks,
+        todoTasks,
+        highPriorityTasks,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      console.log('err in getting stats.', error);
+      throw new InternalServerErrorException('err in getting stats.');
     }
   }
 }

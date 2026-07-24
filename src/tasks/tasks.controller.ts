@@ -7,10 +7,12 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 
 import { CreateTaskDto } from './dto/create-task.dto';
 import { TasksService } from './tasks.service';
+import { TaskPaginationDto } from './dto/task-pagination.dto';
 
 @Controller('tasks')
 export class TasksController {
@@ -22,10 +24,13 @@ export class TasksController {
   }
 
   @Get()
-  findAll() {
-    return this.tasksService.findAll();
+  findAll(@Query() paginatedDto: TaskPaginationDto) {
+    return this.tasksService.findAll(paginatedDto);
   }
-
+  @Get('statistics')
+  statistics() {
+    return this.tasksService.statistics();
+  }
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.tasksService.findOne(id);
